@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Barumbung Raya</title>
+
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
+<script src="https://unpkg.com/@walletconnect/ethereum-provider@2.11.0/dist/index.umd.js"></script>
+
+<style>
+body{
+margin:0;
+font-family:Arial;
+background:linear-gradient(135deg,#021b0f,#064e3b);
+color:white;
+overflow-x:hidden;
+}
+
+/* ===== ANIMASI DRAGON ===== */
+.dragon-bg{
+position:fixed;
+top:50%;
+left:50%;
+transform:translate(-50%,-50%);
+width:600px;
+opacity:0.15;
+animation:float 6s ease-in-out infinite;
+z-index:-1;
+}
+
+@keyframes float{
+0%{transform:translate(-50%,-50%) translateY(0px);}
+50%{transform:translate(-50%,-50%) translateY(-30px);}
+100%{transform:translate(-50%,-50%) translateY(0px);}
+}
+
+/* glow effect */
+.dragon-bg{
+filter: drop-shadow(0 0 20px #00ff88);
+}
+
+/* smoke pulse */
+body::after{
+content:"";
+position:fixed;
+width:800px;
+height:800px;
+background:radial-gradient(circle,#00ff8830,transparent 70%);
+top:50%;
+left:50%;
+transform:translate(-50%,-50%);
+animation:pulse 4s infinite;
+z-index:-2;
+}
+
+@keyframes pulse{
+0%{opacity:0.4;transform:translate(-50%,-50%) scale(1);}
+50%{opacity:0.8;transform:translate(-50%,-50%) scale(1.1);}
+100%{opacity:0.4;transform:translate(-50%,-50%) scale(1);}
+}
+
+header{
+display:flex;
+justify-content:space-between;
+align-items:center;
+padding:15px 40px;
+background:#032e1f;
+}
+
+nav a{
+margin:0 10px;
+color:#00ff88;
+text-decoration:none;
+font-weight:bold;
+}
+
+button{
+background:#00ff88;
+border:none;
+padding:10px 20px;
+font-weight:bold;
+border-radius:8px;
+cursor:pointer;
+}
+
+.hero{
+text-align:center;
+padding:60px 20px;
+}
+
+.hero img{
+width:200px;
+}
+
+.section{
+padding:60px 20px;
+text-align:center;
+}
+
+.presale-box{
+background:#033d2a;
+padding:30px;
+border-radius:15px;
+max-width:420px;
+margin:auto;
+}
+
+input{
+width:80%;
+padding:10px;
+margin:10px 0;
+}
+
+.progress{
+width:100%;
+background:#021b0f;
+border-radius:20px;
+overflow:hidden;
+margin:10px 0;
+}
+
+.progress-bar{
+height:20px;
+width:0%;
+background:#00ff88;
+}
+
+footer{
+background:#021b0f;
+padding:20px;
+text-align:center;
+}
+</style>
+</head>
+
+<body>
+
+<!-- DRAGON BACKGROUND -->
+<img src="dragon.png" class="dragon-bg">
+
+<header>
+<h2>BARUMBUNG RAYA</h2>
+<nav>
+<a href="#home">Home</a>
+<a href="#tokenomics">Tokenomics</a>
+<a href="#presale">Presale</a>
+<button onclick="connectWallet()">Connect Wallet</button>
+</nav>
+</header>
+
+<section class="hero" id="home">
+<img src="logo.png">
+<h1>The Green Dragon of DeFi</h1>
+<p>Total Supply: 10,000,000 BMR</p>
+</section>
+
+<section class="section" id="presale">
+<h2>🔥 Presale Live</h2>
+
+<div class="presale-box">
+<p>Price: 0.001 USDT</p>
+<p>Remaining: <span id="remaining">Connect Wallet</span></p>
+
+<div class="progress">
+<div class="progress-bar" id="progressBar"></div>
+</div>
+
+<input type="number" id="buyAmount" placeholder="Amount BMR">
+<br>
+<button onclick="buy()">Buy Now</button>
+</div>
+
+</section>
+
+<footer>
+© 2026 Barumbung Raya
+</footer>
+
+<script>
+const CONTRACT_PRESALE = "0xe82B3caCba9e69c3E9A62abc00325265Ad80BA9B";
+const PROJECT_ID = "01c18a421f0aaad165274cbf74250ea8";
+
+let provider;
+let signer;
+let presale;
+
+const presaleABI = [
+"function buy(uint256 amount) external",
+"function tokensSold() view returns (uint256)",
+"function maxPresale() view returns (uint256)"
+];
+
+async function connectWallet(){
+provider = await window.EthereumProvider.init({
+projectId: PROJECT_ID,
+chains: [56],
+showQrModal: true
+});
+
+await provider.enable();
+
+const ethersProvider = new ethers.providers.Web3Provider(provider);
+signer = ethersProvider.getSigner();
+presale = new ethers.Contract(CONTRACT_PRESALE, presaleABI, signer);
+
+alert("Wallet Connected");
+loadData();
+}
+
+async function loadData(){
+const sold = await presale.tokensSold();
+const max = await presale.maxPresale();
+
+const remaining = ethers.utils.formatUnits(max.sub(sold),18);
+document.getElementById("remaining").innerText = remaining;
+
+const percent = (sold * 100 / max);
+document.getElementById("progressBar").style.width = percent + "%";
+}
+
+async function buy(){
+const amount = document.getElementById("buyAmount").value;
+if(!amount) return alert("Enter amount");
+
+const tx = await presale.buy(
+ethers.utils.parseUnits(amount,18)
+);
+
+await tx.wait();
+alert("Purchase Success");
+loadData();
+}
+</script>
+
+</body>
+</html>
