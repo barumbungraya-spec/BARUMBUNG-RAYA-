@@ -1,9 +1,157 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Test</title>
+<meta charset="UTF-8">
+<title>Barumbung Raya Presale</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
+
+<style>
+body{
+margin:0;
+font-family:Arial;
+background:linear-gradient(135deg,#021b10,#064e3b);
+color:white;
+text-align:center;
+}
+header{
+padding:20px;
+background:#022c22;
+}
+button{
+padding:10px 20px;
+background:#00ff88;
+border:none;
+border-radius:6px;
+font-weight:bold;
+cursor:pointer;
+margin-top:10px;
+}
+.section{
+padding:50px 20px;
+}
+.progress{
+width:80%;
+height:20px;
+background:#021b10;
+margin:20px auto;
+border-radius:20px;
+overflow:hidden;
+}
+.progress-bar{
+height:100%;
+width:0%;
+background:#00ff88;
+}
+input{
+padding:10px;
+width:250px;
+border-radius:6px;
+border:none;
+}
+</style>
 </head>
-<body style="background:black;color:white;text-align:center;">
-<h1>BARUMBUNG RAYA WORKING</h1>
+
+<body>
+
+<header>
+<h2>BARUMBUNG RAYA PRESALE</h2>
+<button onclick="connectWallet()">Connect Wallet</button>
+</header>
+
+<div class="section">
+<h1>Price: 0.001 USDT</h1>
+<p>Presale Allocation: 5,000,000 BMR</p>
+
+<div class="progress">
+<div class="progress-bar" id="bar"></div>
+</div>
+
+<input type="number" id="amount" placeholder="Amount BMR">
+<br>
+<button onclick="buy()">Buy Now</button>
+
+<p id="status"></p>
+</div>
+
+<script>
+
+// =======================
+// ISI INI
+// =======================
+
+const PRESALE_ADDRESS = "0xe82B3caCba9e69c3E9A62abc00325265Ad80BA9B";
+const USDT_ADDRESS = "0x55d398326f99059fF775485246999027B3197955"; // USDT BSC
+
+const PRESALE_TOTAL = ethers.utils.parseUnits("5000000",18);
+
+// =======================
+
+let provider;
+let signer;
+let presale;
+let usdt;
+
+const presaleABI = [
+"function buy(uint256 amount) external",
+"function tokensSold() view returns(uint256)"
+];
+
+const usdtABI = [
+"function approve(address spender,uint256 amount) external returns(bool)"
+];
+
+async function connectWallet(){
+
+if(!window.ethereum){
+alert("Install Wallet Browser");
+return;
+}
+
+provider = new ethers.providers.Web3Provider(window.ethereum);
+await provider.send("eth_requestAccounts", []);
+signer = provider.getSigner();
+
+presale = new ethers.Contract(PRESALE_ADDRESS, presaleABI, signer);
+usdt = new ethers.Contract(USDT_ADDRESS, usdtABI, signer);
+
+document.getElementById("status").innerHTML="Wallet Connected ✅";
+
+loadProgress();
+}
+
+async function loadProgress(){
+try{
+const sold = await presale.tokensSold();
+const percent = sold.mul(100).div(PRESALE_TOTAL);
+document.getElementById("bar").style.width = percent.toString()+"%";
+}catch(e){}
+}
+
+async function buy(){
+
+let amount = document.getElementById("amount").value;
+if(!amount) return alert("Enter amount");
+
+let tokenAmount = ethers.utils.parseUnits(amount,18);
+let usdtCost = ethers.utils.parseUnits((amount * 0.001).toString(),18);
+
+document.getElementById("status").innerHTML="Approving USDT...";
+
+await usdt.approve(PRESALE_ADDRESS, usdtCost);
+
+document.getElementById("status").innerHTML="Buying...";
+
+let tx = await presale.buy(tokenAmount);
+await tx.wait();
+
+document.getElementById("status").innerHTML="Purchase Success ✅";
+
+loadProgress();
+}
+
+</script>
+
 </body>
 </html>
