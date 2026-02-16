@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Barumbung Raya Presale</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
+<script src="https://unpkg.com/@walletconnect/ethereum-provider@2.9.1/dist/index.umd.js"></script>
+
+<style>
+body{
+    margin:0;
+    font-family:Arial, sans-serif;
+    background:linear-gradient(135deg,#021b10,#064e3b);
+    color:white;
+    text-align:center;
+    overflow-x:hidden;
+}
+
+header{
+    padding:20px;
+    background:#022c22;
+    position:sticky;
+    top:0;
+}
+
+nav a{
+    margin:0 15px;
+    color:#00ff88;
+    text-decoration:none;
+    font-weight:bold;
+}
+
+button{
+    padding:10px 20px;
+    background:#00ff88;
+    border:none;
+    border-radius:6px;
+    font-weight:bold;
+    cursor:pointer;
+    transition:0.3s;
+}
+
+button:hover{
+    transform:scale(1.05);
+    box-shadow:0 0 15px #00ff88;
+}
+
+.section{
+    padding:60px 20px;
+}
+
+.presale-box{
+    background:#033d2e;
+    padding:30px;
+    border-radius:12px;
+    max-width:420px;
+    margin:auto;
+    box-shadow:0 0 20px rgba(0,255,136,0.3);
+    animation: glow 2s infinite alternate;
+}
+
+@keyframes glow{
+    from{box-shadow:0 0 10px #00ff88;}
+    to{box-shadow:0 0 25px #00ff88;}
+}
+
+input{
+    width:100%;
+    padding:10px;
+    margin-top:10px;
+    border-radius:6px;
+    border:none;
+}
+
+.progress-container{
+    background:#021b10;
+    border-radius:20px;
+    overflow:hidden;
+    margin:15px 0;
+}
+
+.progress-bar{
+    height:20px;
+    width:0%;
+    background:#00ff88;
+    transition:width 0.5s ease;
+}
+
+.countdown{
+    font-size:18px;
+    margin-top:10px;
+    color:#00ff88;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+<h2>BARUMBUNG RAYA</h2>
+<nav>
+<a href="#home">Home</a>
+<a href="#presale">Presale</a>
+<button onclick="connectWallet()">Connect Wallet</button>
+</nav>
+</header>
+
+<section class="section" id="home">
+<h1>Green Dragon of DeFi</h1>
+<p>Total Supply: 10,000,000 BMR</p>
+<p>Presale Allocation: 5,000,000 BMR</p>
+<p>Price: 0.001 USDT</p>
+<div class="countdown" id="countdown"></div>
+</section>
+
+<section class="section" id="presale">
+<h2>🔥 Presale Live</h2>
+
+<div class="presale-box">
+<p>Remaining: <span id="remaining">Connect Wallet</span></p>
+
+<div class="progress-container">
+<div class="progress-bar" id="progressBar"></div>
+</div>
+
+<input type="number" id="buyAmount" placeholder="Amount BMR">
+<br><br>
+<button onclick="buy()">Buy Now</button>
+</div>
+</section>
+
+<footer style="padding:20px;background:#021b10;">
+© 2026 Barumbung Raya
+</footer>
+
+<script>
+const CONTRACT_PRESALE = "0xe82B3caCba9e69c3E9A62abc00325265Ad80BA9B";
+const PROJECT_ID = "01c18a421f0aaad165274cbf74250ea8";
+
+const PRESALE_TOTAL = ethers.utils.parseUnits("5000000",18);
+
+// ⏳ SET 3 BULAN DARI SEKARANG
+const presaleEnd = new Date();
+presaleEnd.setMonth(presaleEnd.getMonth()+3);
+
+let provider;
+let signer;
+let presale;
+
+const presaleABI = [
+"function buy(uint256 amount) external",
+"function tokensSold() view returns(uint256)"
+];
+
+function startCountdown(){
+    setInterval(()=>{
+        const now = new Date();
+        const distance = presaleEnd - now;
+
+        if(distance <= 0){
+            document.getElementById("countdown").innerHTML = "Presale Ended";
+            return;
+        }
+
+        const days = Math.floor(distance/(1000*60*60*24));
+        const hours = Math.floor((distance%(1000*60*60*24))/(1000*60*60));
+        const minutes = Math.floor((distance%(1000*60*60))/(1000*60));
+        const seconds = Math.floor((distance%(1000*60))/1000);
+
+        document.getElementById("countdown").innerHTML =
+        "Ends in: "+days+"d "+hours+"h "+minutes+"m "+seconds+"s";
+    },1000);
+}
+
+async function connectWallet(){
+
+    if(window.ethereum){
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        signer = provider.getSigner();
+    } else {
+        const EthereumProvider = window.EthereumProvider.default;
+        provider = await EthereumProvider.init({
+            projectId: PROJECT_ID,
+            chains: [56],
+            showQrModal: true
+        });
+        await provider.enable();
+        provider = new ethers.providers.Web3Provider(provider);
+        signer = provider.getSigner();
+    }
+
+    presale = new ethers.Contract(CONTRACT_PRESALE, presaleABI, signer);
+    loadProgress();
+}
+
+async function loadProgress(){
+    const sold = await presale.tokensSold();
+    const remaining = PRESALE_TOTAL.sub(sold);
+
+    document.getElementById("remaining").innerText =
+        ethers.utils.formatUnits(remaining,18)+" BMR";
+
+    const percent = sold.mul(100).div(PRESALE_TOTAL);
+    document.getElementById("progressBar").style.width =
+        percent.toString()+"%";
+}
+
+async function buy(){
+    const amount = document.getElementById("buyAmount").value;
+    if(!amount) return alert("Enter amount");
+
+    const tx = await presale.buy(
+        ethers.utils.parseUnits(amount,18)
+    );
+
+    await tx.wait();
+    alert("Purchase Success!");
+    loadProgress();
+}
+
+startCountdown();
+</script>
+
+</body>
+</html>
